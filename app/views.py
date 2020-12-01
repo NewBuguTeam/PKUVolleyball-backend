@@ -56,10 +56,10 @@ def login():
         return f"login successfully as {username}, an " + ('Admin' if isAdmin else 'Umpire')
     else:
         if request.method == 'POST':
-            username = str(json.loads(request.values.get("username")))
-            password = str(json.loads(request.values.get("password")))
-        #    username = request.form['username']
-        #    password = request.form['password']
+        #    username = str(json.loads(request.values.get("username")))
+        #    password = str(json.loads(request.values.get("password")))
+            username = request.form['username']
+            password = request.form['password']
             current_user = db.session.query(User).filter(User.username == username).first()
             if current_user is None:
                 # username doesn't exist
@@ -95,10 +95,10 @@ def logout():
 @guest.route('/viewMatches/', methods = ['GET', 'POST'])
 def viewMatches():
     if request.method == 'POST':
-        lastShowed = int(json.loads(request.values.get("lastShowed")))
-        numLimit = int(json.loads(request.values.get("numOfMatchesRequesting")))
-        # lastShowed = int(request.form['lastShowed'])
-        # numLimit = int(request.form['numOfMatchesRequesting'])
+        # lastShowed = int(json.loads(request.values.get("lastShowed")))
+        # numLimit = int(json.loads(request.values.get("numOfMatchesRequesting")))
+        lastShowed = int(request.form['lastShowed'])
+        numLimit = int(request.form['numOfMatchesRequesting'])
         print('viewMatches', lastShowed, numLimit)
         
         matchList = []

@@ -13,17 +13,21 @@ guest_blueprint = Blueprint('guest', __name__)
 umpire_blueprint = Blueprint('umpire', __name__)
 admin_blueprint = Blueprint('admin', __name__)
 
-from . import views
+def create_app():
 
-app = Flask(__name__, instance_relative_config=True)
-app.config.from_pyfile('config.py')
-db.init_app(app)
+    from . import views
 
-migrate = Migrate(app, db)
+    app = Flask(__name__, instance_relative_config=True)
+    app.config.from_pyfile('config.py')
+    db.init_app(app)
 
-from . import models
+    migrate = Migrate(app, db)
 
-app.register_blueprint(guest_blueprint)
-app.register_blueprint(umpire_blueprint, url_prefix = '/umpire')
-app.register_blueprint(admin_blueprint, url_prefix = '/admin')
+    from . import models
+
+    app.register_blueprint(guest_blueprint)
+    app.register_blueprint(umpire_blueprint, url_prefix = '/umpire')
+    app.register_blueprint(admin_blueprint, url_prefix = '/admin')
+    
+    return app
 

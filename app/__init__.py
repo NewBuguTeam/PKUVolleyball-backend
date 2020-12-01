@@ -9,7 +9,9 @@ from flask import Blueprint
 
 # db variable initialization
 db = SQLAlchemy()
-user_blueprint = Blueprint('user', __name__)
+guest_blueprint = Blueprint('guest', __name__)
+umpire_blueprint = Blueprint('umpire', __name__)
+admin_blueprint = Blueprint('admin', __name__)
 
 from . import views
 
@@ -21,6 +23,7 @@ migrate = Migrate(app, db)
 
 from app import models
 
-app.register_blueprint(user_blueprint)
-
+app.register_blueprint(guest_blueprint)
+app.register_blueprint(umpire_blueprint, url_prefix = '/umpire')
+app.register_blueprint(admin_blueprint, url_prefix = '/admin')
 

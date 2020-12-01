@@ -21,7 +21,7 @@ db.init_app(app)
 
 migrate = Migrate(app, db)
 
-from app import models
+from . import models
 
 app.register_blueprint(guest_blueprint)
 app.register_blueprint(umpire_blueprint, url_prefix = '/umpire')

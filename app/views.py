@@ -58,8 +58,8 @@ def login():
         if request.method == 'POST':
             username = str(json.loads(request.values.get("username")))
             password = str(json.loads(request.values.get("password")))
-        #    username = request.form['username']
-        #    password = request.form['password']
+            # username = request.form['username']
+            # password = request.form['password']
             current_user = db.session.query(User).filter(User.username == username).first()
             if current_user is None:
                 # username doesn't exist

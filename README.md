@@ -36,3 +36,5 @@ mysql> drop table alembic_version;
 ```
 
 Finally, `flask run` in the windows commandline will run the server.
+
+When testing functions in the browser, please don't forget to comment the inputs like `username = str(json.loads(request.values.get("username")))`, and uncomment the inputs like `username = request.form['username']`. These input handlers are at the top of functions. The former ones are used for the WeChat mini-program, and the latter ones are used for the browser testing.

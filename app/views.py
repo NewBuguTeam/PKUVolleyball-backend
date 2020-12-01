@@ -56,10 +56,10 @@ def login():
         return f"login successfully as {username}, an " + ('Admin' if isAdmin else 'Umpire')
     else:
         if request.method == 'POST':
-        #    username = str(json.loads(request.values.get("username")))
-        #    password = str(json.loads(request.values.get("password")))
-            username = request.form['username']
-            password = request.form['password']
+            username = str(json.loads(request.values.get("username")))
+            password = str(json.loads(request.values.get("password")))
+        #    username = request.form['username']
+        #    password = request.form['password']
             current_user = db.session.query(User).filter(User.username == username).first()
             if current_user is None:
                 # username doesn't exist
@@ -91,40 +91,42 @@ def logout():
         session.pop('isAdmin', None)
     return redirect(url_for('guest.login'))
     
-'''
-    // [REQUEST VIEW_MATCHES]
-	{
-		"beginsAt" : int	// ID for the latest / most past match showed, -1 for none
-		"direction" : "up" / "down"		// requesting for matches in the past / future
-		"numOfMatchesRequesting" : 5
-	}
-	// [RESPONSE VIEW_MATCHES]
-	{
-		"numOfMatchesResponsed" : int	// capped at 5
-		"matches" : [
-			{
-				"id" : int
-				"gender" : "M" / "F"
-				"for_group_X_or_knockout_X" : "A" / "..." / "D" / "8" / "4" / "2"
-				"time" : "2020-11-22 13:00:00"
-				"status" : "未开始" / "进行中" / "已结束"
-				"teamA" : "信科"
-				"teamB" : "外院"
-				"location" : "五四" / "一体" / "邱德拔"
-				"umpire" : 
-				"viceUmpire" : 
-				"point" : "?:?"
-			}, 
-			{...}, {...}, ...
-		]
-	}
-'''
-    
+   
 @guest.route('/viewMatches/', methods = ['GET', 'POST'])
 def viewMatches():
-#    if request.method == 'POST':
+    if request.method == 'POST':
+        lastShowed = int(json.loads(request.values.get("lastShowed")))
+        numLimit = int(json.loads(request.values.get("numOfMatchesRequesting")))
+        # lastShowed = int(request.form['lastShowed'])
+        # numLimit = int(request.form['numOfMatchesRequesting'])
+        print('viewMatches', lastShowed, numLimit)
+        
         matchList = []
         matches = db.session.query(Match).filter().all()
+        
+        def getMatchTime(m):
+            return m.matchTime
+            
+        matches.sort(key = getMatchTime)
+        
+        # get appropriate num of matches to respond
+        
+        if lastShowed == -1:                
+            matches = matches[-numLimit:]
+        else:
+            lastShowedMatch = db.session.query(Match).filter(Match.id == lastShowed).all()
+            try:
+                lastShowedIndex = matches.index(lastShowedMatch[0])
+                
+                if lastShowedIndex <= numLimit:
+                    matches = matches[0:lastShowedIndex]
+                else:
+                    matches = matches[lastShowedIndex - numLimit : lastShowedIndex]
+            except ValueError:
+                print("the match indicated by \"lastShowed\" doesn't exist in the database")
+                
+        # convert database object into dict and then JSON
+        
         for m in matches:
             match_dict = {
                 'id': m.id,
@@ -145,12 +147,20 @@ def viewMatches():
         }
         return json.dumps(jsonData)
         
-#    else:
-#        return '''GETting /viewMatches/'''
+    else:
+        # GET method gives a form here for testing database & logic
+        return '''
+        <form action = "" method = "post">
+            <p><input type = "text" name = "lastShowed"></p>
+            <p><input type = "text" name = "numOfMatchesRequesting"></p>
+            <p><input type = "submit" value = "确定"></p>
+        </form>
+            '''
     
 
 @guest.route('/matchInfo/<id>/')
 def matchInfo(id):
+    print('matchInfo:', id)
     match = db.session.query(Match).filter(Match.id == id).first()
     if match is None:
         # corresponding match doesn't exist

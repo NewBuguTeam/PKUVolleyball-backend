@@ -172,10 +172,19 @@ def index():
 
 @guest.route('/login/', methods = ['GET', 'POST'])
 def login():
+    returnDict = {
+        'success': None,
+        'username': None,
+        'isAdmin': None,
+        'errorType': None
+    }
     if 'username' in session:
         username = session['username']
         isAdmin = session['isAdmin']
-        return f"login successfully as {username}, an " + ('Admin' if isAdmin else 'Umpire')
+        returnDict['success'] = True
+        returnDict['username'] = session['username']
+        returnDict['isAdmin'] = session['isAdmin']
+        return json.dumps(returnDict)
     else:
         if request.method == 'POST':
             '''
@@ -188,16 +197,22 @@ def login():
             current_user = db.session.query(User).filter(User.username == username).first()
             if current_user is None:
                 # username doesn't exist
-                return 'username doesn\'t exist'
+                returnDict['success'] = False
+                returnDict['errorType'] = 'username'
+                return json.dumps(returnDict)
             elif current_user.password != password:
                 # wrong password
-                return 'password error'
+                returnDict['success'] = False
+                returnDict['errorType'] = 'password'
+                return json.dumps(returnDict)
             else:
                 # login successfully
                 session['username'] = username
                 session['isAdmin'] = current_user.isAdmin
-                return f"login successfully as {username}, an " + ('Admin' if current_user.isAdmin else 'Umpire')
-                   
+                returnDict['success'] = True
+                returnDict['username'] = session['username']
+                returnDict['isAdmin'] = session['isAdmin']
+                return json.dumps(returnDict)
         else:
             # GET method gives a form here for testing database
             return '''

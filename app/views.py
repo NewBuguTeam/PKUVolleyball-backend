@@ -11,6 +11,7 @@ from app import db
 from . import guest_blueprint as guest
 from . import umpire_blueprint as umpire
 from . import admin_blueprint as admin
+from sqlalchemy.exc import IntegrityError as IntegrityError
 
 
 def string_toDatetime(string):
@@ -52,8 +53,72 @@ def matchStatus(match):
             return '??????'
         else:
             return '已结束'
-    
-    
+
+
+@admin.route('/addMatch/', methods = ['GET', 'POST'])
+def addMatch():
+    curIden = testIdentity()
+    if curIden == 0:
+            # no permission, error
+        return 'no permission'
+    elif curIden == -1:
+        # not login yet, error
+        return 'not login yet'
+    if request.method == 'POST':
+        # '''
+        gender = json.loads(request.values.get("gender"))
+        stage = json.loads(request.values.get("for_group_X_or_knockout_X"))
+        # what type is "time"?
+        matchTime = json.loads(request.values.get("time"))
+        teamA = json.loads(request.values.get("teamA"))
+        teamB = json.loads(request.values.get("teamB"))
+        location = json.loads(request.values.get("location"))
+        '''
+        teamA = request.form["teamA"]
+        teamB = request.form["teamB"]
+        location = None
+        matchTime = "2020-10-10 20:00:00"
+        gender = 'M'
+        stage = 'D'
+        '''
+        
+        try:
+            Agroup = db.session.query(Team).filter(Team.name == teamA).first().inGroup
+        except:
+            return 'Unknown team: \"' + teamA + '\"'
+        
+        try:
+            Bgroup = db.session.query(Team).filter(Team.name == teamB).first().inGroup
+        except:
+            return 'Unknown team: \"' + teamB + '\"'
+            
+        if teamA == teamB:
+            return 'Repeated team name'
+            
+        if 'A' <= stage <= 'D' and Agroup != Bgroup:
+            return 'Two teams from different groups in group stage'
+        
+
+        newMatch = Match(
+            id = 0, location = location, matchTime = matchTime, gender = gender,
+            stage = stage, teamA = teamA, teamB = teamB, point = "0:0",
+            umpire = None, viceUmpire = None
+        )
+        db.session.add(newMatch)
+        db.session.commit()
+        return 'Add new match successfully'
+        
+        
+    else:
+        return '''
+            <form action = "" method = "post">
+                <p><input type = "text" name = "teamA"></p>
+                <p><input type = "text" name = "teamB"></p>
+                <p><input type = "submit" value = "OK"></p>
+            </form>
+                '''
+
+
 @admin.route('/addUser/', methods = ['GET', 'POST'])
 def addUser():
     curIden = testIdentity()
@@ -64,20 +129,24 @@ def addUser():
         # not login yet, error
         return 'not login yet'
     if request.method == 'POST':
-        
-        # newUsername = json.loads(request.values.get("newUsername"))
-        # newUserIsAdmin = boolean(json.loads(request.values.get("newUserIsAdmin")))
-        # newSchool = json.loads(request.values.get("newUserSchool"))
+        # '''
+        newUsername = json.loads(request.values.get("newUsername"))
+        newPassword = json.loads(request.values.get("newPassword"))
+        newUserIsAdmin = boolean(json.loads(request.values.get("newUserIsAdmin")))
+        newSchool = json.loads(request.values.get("newUserSchool"))
+        '''
         newUsername = request.form["newUsername"]
+        newPassword = request.form["newPassword"]
         newUserIsAdmin = ("newUserIsAdmin" in request.form)
         newSchool = request.form["newUserSchool"]
+        '''
         
         # maybe school name should be checked here?
         
         if db.session.query(User).filter(User.username == newUsername).count() != 0:
             return 'User \"' + newUsername + '\" already existed'
         newUser = User(
-            id = 0, username = newUsername, password = newUsername,
+            id = 0, username = newUsername, password = newPassword,
             isAdmin = newUserIsAdmin, icon = None, school = newSchool,
             umpireFee = 0
         )
@@ -88,6 +157,7 @@ def addUser():
         return '''
             <form action = "" method = "post">
                 <p><input type = "text" name = "newUsername"></p>
+                <p><input type = "text" name = "newPassword"></p>
                 <p><input type = "text" name = "newUserSchool"></p>
                 <p><input type = "checkbox" name = "newUserIsAdmin"></p>
                 <p><input type = "submit" value = "登录"></p>
@@ -108,10 +178,13 @@ def login():
         return f"login successfully as {username}, an " + ('Admin' if isAdmin else 'Umpire')
     else:
         if request.method == 'POST':
-            # username = json.loads(request.values.get("username"))
-            # password = json.loads(request.values.get("password"))
+            '''
+            username = json.loads(request.values.get("username"))
+            password = json.loads(request.values.get("password"))
+            '''
             username = request.form['username']
             password = request.form['password']
+            # '''
             current_user = db.session.query(User).filter(User.username == username).first()
             if current_user is None:
                 # username doesn't exist
@@ -183,10 +256,13 @@ def setGrouping():
         return 'not login yet'
         
     if request.method == 'POST':
-        # gender = json.loads(request.values.get("gender"))
-        # group = json.loads(request.values.get("group"))
+        # '''
+        gender = json.loads(request.values.get("gender"))
+        group = json.loads(request.values.get("group"))
+        '''
         gender = request.form['gender']
         group = json.loads(request.form['group'])
+        '''
         groupSize = []
         teams = set()
         
@@ -279,6 +355,14 @@ def viewMatches():
         # convert database object into dict and then JSON
         
         for m in matches:
+            if m.umpire is not None:
+                umpireIcon = db.session.query(User).filter(User.id == m.umpire).first().icon
+            else:
+                umpireIcon = None
+            if m.viceUmpire is not None:
+                viceumpireIcon = db.session.query(User).filter(User.id == m.viceUmpire).first().icon
+            else:
+                viceUmpireIcon = None
             match_dict = {
                 'id': m.id,
                 'gender': m.gender,
@@ -289,9 +373,9 @@ def viewMatches():
                 'teamB': m.teamB,
                 'location': m.location,
                 'umpire': m.umpire,
-                'umpireIcon': None,         # not implemented yet
+                'umpireIcon': umpireIcon,
                 'viceUmpire': m.viceUmpire,
-                'viceUmpireIcon': None,     # not implemented yet
+                'viceUmpireIcon': viceUmpireIcon,
                 'point': m.point,
             }
             matchList.append(match_dict)
@@ -333,7 +417,16 @@ def matchInfo(id):
                 'procedure': g.gameProcedure
             }
             game_list.append(game_dict)
-        
+            
+        if match.umpire is not None:
+            umpireIcon = db.session.query(User).filter(User.id == match.umpire).first().icon
+        else:
+            umpireIcon = None
+        if match.viceUmpire is not None:
+            viceumpireIcon = db.session.query(User).filter(User.id == match.viceUmpire).first().icon
+        else:
+            viceUmpireIcon = None
+                
         match_dict = {
             'id': match.id,
             'gender': match.gender,
@@ -344,7 +437,9 @@ def matchInfo(id):
             'teamB': match.teamB,
             'location': match.location,
             'umpire': match.umpire,
+            'umpireIcon': umpireIcon,
             'viceUmpire': match.viceUmpire,
+            'viceUmpireIcon': viceUmpireIcon,
             'point': match.point,
             'detailedPoints': game_list
         }

@@ -145,18 +145,22 @@ def logout():
     
 @guest.route('/viewGrouping/')
 def viewGrouping():
-    group = {}
+    groupLists = []
     # Querying Male Grouping
     for g in 'M', 'F':
-        curGenderGroups = {}
+        curGenderGroup = {"gender": g}
+        curGroupList = []
         for G in 'A', 'B', 'C', 'D':
-            curGroup = []
+            curGroup = {"name": G}
+            curTeamList = []
             curQuery = db.session.query(Team).filter(Team.gender == g, Team.inGroup == G).all()
             for t in curQuery:
-                curGroup.append(t.name)
-            curGenderGroups[G] = curGroup
-        group[g] = curGenderGroups
-    return json.dumps(group)
+                curTeamList.append(t.name)
+            curGroup["teamList"] = curTeamList
+            curGroupList.append(curGroup)
+        curGenderGroup["groupList"] = curGroupList
+        groupLists.append(curGenderGroup)
+    return json.dumps({"groupLists": groupLists})
 
 '''
 1. ensure that Male or Female grouping is not set before, hence grouping can only be set only once

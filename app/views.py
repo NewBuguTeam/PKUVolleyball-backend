@@ -11,7 +11,7 @@ from app import db
 from . import guest_blueprint as guest
 from . import umpire_blueprint as umpire
 from . import admin_blueprint as admin
-from sqlalchemy.exc import IntegrityError as IntegrityError
+from sqlalchemy import or_, and_
 
 
 def string_toDatetime(string):
@@ -55,6 +55,34 @@ def matchStatus(match):
             return '已结束'
 
 
+'''
+    given a school name, find its group in gender 'M' and 'F'.
+    pay attention if the school belongs to a unified team.
+'''
+@guest.route('/school2group/<school>/')
+def school2group(school):
+    Mteam = db.session.query(Team).filter(
+        Team.gender == 'M', or_(Team.name == school, 
+            and_(Team.isUnified == True, 
+                or_(Team.schoolA == school, Team.schoolB == school)))).first()
+    Fteam = db.session.query(Team).filter(
+        Team.gender == 'F', or_(Team.name == school, 
+            and_(Team.isUnified == True, 
+                or_(Team.schoolA == school, Team.schoolB == school)))).first()
+                
+    returnDict = {
+        'Mgroup': '',
+        'Fgroup': ''
+    }
+    
+    if Mteam is not None:
+        returnDict['Mgroup'] = Mteam.inGroup
+    if Fteam is not None:
+        returnDict['Fgroup'] = Fteam.inGroup
+    
+    return json.dumps(returnDict)
+    
+    
 @admin.route('/addMatch/', methods = ['GET', 'POST'])
 def addMatch():
     curIden = testIdentity()
@@ -174,31 +202,32 @@ def index():
 def login():
     returnDict = {
         'success': None,
-        'username': None,
+        'username': '',
         'isAdmin': None,
-        'errorType': None
+        'school': '',
+        'errorType': ''
     }
     if 'username' in session:
-        username = session['username']
-        isAdmin = session['isAdmin']
         returnDict['success'] = True
         returnDict['username'] = session['username']
         returnDict['isAdmin'] = session['isAdmin']
+        returnDict['school'] = session['school']
         return json.dumps(returnDict)
     else:
         if request.method == 'POST':
-            '''
+            # '''
             username = json.loads(request.values.get("username"))
             password = json.loads(request.values.get("password"))
             '''
             username = request.form['username']
             password = request.form['password']
-            # '''
+            '''
             current_user = db.session.query(User).filter(User.username == username).first()
             if current_user is None:
                 # username doesn't exist
                 returnDict['success'] = False
                 returnDict['errorType'] = 'username'
+                returnDict['username'] = username
                 return json.dumps(returnDict)
             elif current_user.password != password:
                 # wrong password
@@ -209,9 +238,11 @@ def login():
                 # login successfully
                 session['username'] = username
                 session['isAdmin'] = current_user.isAdmin
+                session['school'] = current_user.school
                 returnDict['success'] = True
                 returnDict['username'] = session['username']
                 returnDict['isAdmin'] = session['isAdmin']
+                returnDict['school'] = session['school']
                 return json.dumps(returnDict)
         else:
             # GET method gives a form here for testing database

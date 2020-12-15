@@ -93,7 +93,7 @@ def addMatch():
         # not login yet, error
         return 'not login yet'
     if request.method == 'POST':
-        '''
+        # '''
         gender = json.loads(request.values.get("gender"))
         stage = json.loads(request.values.get("for_group_X_or_knockout_X"))
         # what type is "time"?
@@ -158,17 +158,18 @@ def addUser():
         # not login yet, error
         return 'not login yet'
     if request.method == 'POST':
-        '''
+        # '''
         newUsername = json.loads(request.values.get("newUsername"))
         newPassword = json.loads(request.values.get("newPassword"))
-        newUserIsAdmin = boolean(json.loads(request.values.get("newUserIsAdmin")))
-        newSchool = json.loads(request.values.get("newUserSchool"))
+        newUserIsAdmin = bool(request.values.get("newUserIsAdmin"))
+        print(request.values.get("newUserSchool"))
+        newSchool = json.loads(request.values.get("newSchool"))
         '''
         newUsername = request.form["newUsername"]
         newPassword = request.form["newPassword"]
         newUserIsAdmin = ("newUserIsAdmin" in request.form)
         newSchool = request.form["newUserSchool"]
-        # '''
+        '''
         
         # maybe school name should be checked here?
         
@@ -216,13 +217,13 @@ def login():
         return json.dumps(returnDict)
     else:
         if request.method == 'POST':
-            '''
+            # '''
             username = json.loads(request.values.get("username"))
             password = json.loads(request.values.get("password"))
             '''
             username = request.form['username']
             password = request.form['password']
-            # '''
+            '''
             current_user = db.session.query(User).filter(User.username == username).first()
             if current_user is None:
                 # username doesn't exist
@@ -304,13 +305,13 @@ def setGrouping():
         return 'not login yet'
         
     if request.method == 'POST':
-        '''
+        # '''
         gender = json.loads(request.values.get("gender"))
         group = json.loads(request.values.get("group"))
         '''
         gender = request.form['gender']
         group = json.loads(request.form['group'])
-        # '''
+        '''
         groupSize = []
         teams = set()
         

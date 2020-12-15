@@ -93,7 +93,7 @@ def addMatch():
         # not login yet, error
         return 'not login yet'
     if request.method == 'POST':
-        # '''
+        '''
         gender = json.loads(request.values.get("gender"))
         stage = json.loads(request.values.get("for_group_X_or_knockout_X"))
         # what type is "time"?
@@ -108,23 +108,24 @@ def addMatch():
         matchTime = "2020-10-10 20:00:00"
         gender = 'M'
         stage = 'D'
-        '''
+        # '''
         
         try:
-            Agroup = db.session.query(Team).filter(Team.name == teamA).first().inGroup
+            Agroup = db.session.query(Team).filter(Team.name == teamA, Team.gender == gender).first().inGroup
+            
         except:
             return 'Unknown team: \"' + teamA + '\"'
         
         try:
-            Bgroup = db.session.query(Team).filter(Team.name == teamB).first().inGroup
+            Bgroup = db.session.query(Team).filter(Team.name == teamB, Team.gender == gender).first().inGroup
         except:
             return 'Unknown team: \"' + teamB + '\"'
             
         if teamA == teamB:
             return 'Repeated team name'
             
-        if 'A' <= stage <= 'D' and Agroup != Bgroup:
-            return 'Two teams from different groups in group stage'
+        if 'A' <= stage <= 'D' and (Agroup != Bgroup or Agroup != stage):
+            return 'Group error'
         
 
         newMatch = Match(
@@ -151,13 +152,13 @@ def addMatch():
 def addUser():
     curIden = testIdentity()
     if curIden == 0:
-            # no permission, error
+        # no permission, error
         return 'no permission'
     elif curIden == -1:
         # not login yet, error
         return 'not login yet'
     if request.method == 'POST':
-        # '''
+        '''
         newUsername = json.loads(request.values.get("newUsername"))
         newPassword = json.loads(request.values.get("newPassword"))
         newUserIsAdmin = boolean(json.loads(request.values.get("newUserIsAdmin")))
@@ -167,7 +168,7 @@ def addUser():
         newPassword = request.form["newPassword"]
         newUserIsAdmin = ("newUserIsAdmin" in request.form)
         newSchool = request.form["newUserSchool"]
-        '''
+        # '''
         
         # maybe school name should be checked here?
         
@@ -215,13 +216,13 @@ def login():
         return json.dumps(returnDict)
     else:
         if request.method == 'POST':
-            # '''
+            '''
             username = json.loads(request.values.get("username"))
             password = json.loads(request.values.get("password"))
             '''
             username = request.form['username']
             password = request.form['password']
-            '''
+            # '''
             current_user = db.session.query(User).filter(User.username == username).first()
             if current_user is None:
                 # username doesn't exist
@@ -260,6 +261,7 @@ def logout():
     if 'username' in session:
         session.pop('username', None)
         session.pop('isAdmin', None)
+        session.pop('school', None)
     return redirect(url_for('guest.login'))
     
 @guest.route('/viewGrouping/')
@@ -302,13 +304,13 @@ def setGrouping():
         return 'not login yet'
         
     if request.method == 'POST':
-        # '''
+        '''
         gender = json.loads(request.values.get("gender"))
         group = json.loads(request.values.get("group"))
         '''
         gender = request.form['gender']
         group = json.loads(request.form['group'])
-        '''
+        # '''
         groupSize = []
         teams = set()
         
@@ -325,6 +327,7 @@ def setGrouping():
             for k, v in curGroup.items():
                 if k in teams:
                     # repeated team, error
+                    db.session.rollback()
                     return 'repeated team: ' + k
                 else:
                     teams.add(k)
@@ -335,8 +338,10 @@ def setGrouping():
                         )
                     else:
                         if v[0] == v[1] or v[0] in teams:
+                            db.session.rollback()
                             return 'repeated team: ' + v[0]
                         elif v[1] in teams:
+                            db.session.rollback()
                             return 'repeated team: ' + v[1]
                         curTeam = Team(
                             name = k, gender = gender, inGroup = groupName,
@@ -346,6 +351,7 @@ def setGrouping():
         
         if max(groupSize) - min(groupSize) >= 2:
             # Grouping is not balanced, error
+            db.session.rollback()
             return 'grouping is unbalanced in num'
             
         # No error, commit changes to database
@@ -406,7 +412,7 @@ def viewMatches():
             else:
                 umpireIcon = None
             if m.viceUmpire is not None:
-                viceumpireIcon = db.session.query(User).filter(User.id == m.viceUmpire).first().icon
+                viceUmpireIcon = db.session.query(User).filter(User.id == m.viceUmpire).first().icon
             else:
                 viceUmpireIcon = None
             match_dict = {
@@ -469,7 +475,7 @@ def matchInfo(id):
         else:
             umpireIcon = None
         if match.viceUmpire is not None:
-            viceumpireIcon = db.session.query(User).filter(User.id == match.viceUmpire).first().icon
+            viceUmpireIcon = db.session.query(User).filter(User.id == match.viceUmpire).first().icon
         else:
             viceUmpireIcon = None
                 

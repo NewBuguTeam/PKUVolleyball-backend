@@ -431,11 +431,11 @@ def viewMatches():
             if m.umpire is not None:
                 umpireIcon = db.session.query(User).filter(User.id == m.umpire).first().icon
             else:
-                umpireIcon = None
+                umpireIcon = ''
             if m.viceUmpire is not None:
                 viceUmpireIcon = db.session.query(User).filter(User.id == m.viceUmpire).first().icon
             else:
-                viceUmpireIcon = None
+                viceUmpireIcon = ''
             match_dict = {
                 'id': m.id,
                 'gender': m.gender,
@@ -494,11 +494,11 @@ def matchInfo(id):
         if match.umpire is not None:
             umpireIcon = db.session.query(User).filter(User.id == match.umpire).first().icon
         else:
-            umpireIcon = None
+            umpireIcon = ''
         if match.viceUmpire is not None:
             viceUmpireIcon = db.session.query(User).filter(User.id == match.viceUmpire).first().icon
         else:
-            viceUmpireIcon = None
+            viceUmpireIcon = ''
                 
         match_dict = {
             'id': match.id,
@@ -517,4 +517,39 @@ def matchInfo(id):
             'detailedPoints': game_list
         }
         return json.dumps(match_dict)
-    
+
+
+@umpire.route('/confirmPoints/', methods = ['GET', 'POST'])
+def confirmPoints():
+    curIden = testIdentity()
+    if curIden == 1:
+            # no permission, error
+        return 'no permission'
+    elif curIden == -1:
+        # not login yet, error
+        return 'not login yet'
+    if request.method == 'POST':
+        # '''
+        id = int(json.loads(request.values.get("id")))
+        point = json.loads(request.values.get("point"))
+        detailedPoints = json.loads(json.loads(request.values.get("detailedPoints")))
+        '''
+        id = int(request.form["id"])
+        point = request.form["point"]
+        detailedPoints = json.loads(request.form["detailedPoints"])
+        '''
+        curMatch = db.session.query(Match).filter(Match.id == id).first()
+        print(dir(curMatch))
+        return ''
+    else:
+        # GET method gives a form here for testing database & logic
+        return '''
+        <form action = "" method = "post">
+            <p><input type = "text" name = "id"></p>
+            <p><input type = "text" name = "point"></p>
+            <p><input type = "text" name = "detailedPoints"></p>
+            <p><input type = "submit" value = "确定"></p>
+        </form>
+            '''
+
+

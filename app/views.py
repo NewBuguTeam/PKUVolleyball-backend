@@ -161,8 +161,7 @@ def addUser():
         # '''
         newUsername = json.loads(request.values.get("newUsername"))
         newPassword = json.loads(request.values.get("newPassword"))
-        newUserIsAdmin = bool(request.values.get("newUserIsAdmin"))
-        print(request.values.get("newUserSchool"))
+        newUserIsAdmin = bool(json.loads(request.values.get("newIsAdmin")))
         newSchool = json.loads(request.values.get("newSchool"))
         '''
         newUsername = request.form["newUsername"]
@@ -377,12 +376,22 @@ def setGrouping():
 @guest.route('/viewMatches/', methods = ['GET', 'POST'])
 def viewMatches():
     if request.method == 'POST':
-        # beginsAt = json.loads(request.values.get("beginsAt"))
+        # '''
+        beginsAt = json.loads(request.values.get("beginsAt"))
+        matchDays = int(json.loads(request.values.get("matchDaysRequesting")))
+        direction = json.loads(request.values.get("direction"))
+        '''
         beginsAt = request.form['beginsAt']
+        matchDays = 2
+        direction = 'D'
+        '''
         print('viewMatches', beginsAt)
         
         matchList = []
-        matches = db.session.query(Match).filter(Match.matchTime < (beginsAt + " 00:00:00")).all()
+        if direction == 'U':
+            matches = db.session.query(Match).filter(Match.matchTime < (beginsAt + " 00:00:00")).all()
+        else:
+            matches = db.session.query(Match).filter(Match.matchTime > (beginsAt + " 00:00:00")).all()
         
         def getMatchTime(m):
             return m.matchTime
@@ -395,16 +404,27 @@ def viewMatches():
         
         totalNumMatches = len(matches)
         matchDayCounter = 0
-        for _ in range(totalNumMatches-1, -1, -1):
-            curMatchDate = datetime_toString(matches[_].matchTime).split(' ')[0]
-            if curMatchDate != beginsAt:
-                if matchDayCounter == 2:
-                    matches = matches[_+1 : ]
-                    break
-                else:
-                    matchDayCounter = matchDayCounter + 1
-                    beginsAt = curMatchDate
-                    
+        if direction == 'U':
+            for _ in range(totalNumMatches-1, -1, -1):
+                curMatchDate = datetime_toString(matches[_].matchTime).split(' ')[0]
+                if curMatchDate != beginsAt:
+                    if matchDayCounter == matchDays:
+                        matches = matches[_+1 : ]
+                        break
+                    else:
+                        matchDayCounter = matchDayCounter + 1
+                        beginsAt = curMatchDate
+        else:
+            for _ in range(totalNumMatches):
+                curMatchDate = datetime_toString(matches[_].matchTime).split(' ')[0]
+                if curMatchDate != beginsAt:
+                    if matchDayCounter == matchDays:
+                        matches = matches[:_]
+                        break
+                    else:
+                        matchDayCounter = matchDayCounter + 1
+                        beginsAt = curMatchDate
+                        
         # convert database object into dict and then JSON
         
         for m in matches:

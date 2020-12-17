@@ -538,9 +538,52 @@ def confirmPoints():
         point = request.form["point"]
         detailedPoints = json.loads(request.form["detailedPoints"])
         '''
+        
+        returnDict = {
+            'success': None,
+            'error': ''
+        }
+        
         curMatch = db.session.query(Match).filter(Match.id == id).first()
-        print(dir(curMatch))
-        return ''
+        if curMatch is None:
+            returnDict['success'] = False
+            returnDict['error'] = 'Match id doesn\'t exist'
+            return json.dumps(returnDict)
+        
+        intpoint = [int(p) for p in point.split(':')]
+        gameNum = sum(intpoint)
+        if gameNum != len(detailedPoints):
+            returnDict['success'] = False
+            returnDict['error'] = 'Number of games doesn\'t match the point'
+            return json.dumps(returnDict)
+        
+        pointTest = [0, 0]
+        for g in detailedPoints:
+            gPoint = g['point'].split(':')
+            if int(gPoint[0]) > int(gPoint[1]):
+                pointTest[0] = pointTest[0] + 1
+            else:
+                pointTest[1] = pointTest[1] + 1
+        if intpoint != pointTest:
+            returnDict['success'] = False
+            returnDict['error'] = 'Detailed points doesn\'t match the point'
+            return json.dumps(returnDict)
+            
+        curMatch.point = point
+        db.session.commit()
+        
+        curGameNum = 1
+        for g in detailedPoints:
+            game = Game(
+                inMatchID = id, num = curGameNum, point = g['point'], 
+                duration = g['duration'], gameProcedure = g['procedure']
+            )
+            print(game)
+            db.session.add(game)
+            db.session.commit()
+            curGameNum = curGameNum + 1
+        returnDict['success'] = True
+        return json.dumps(returnDict)
     else:
         # GET method gives a form here for testing database & logic
         return '''

@@ -17,6 +17,8 @@ mysql> flush privileges;
 
 Database structures are now given in /app/models.py, which may be uncompleted yet.
 
+**Database structures have been changed since this commit. If you have configured the database before, please re-migrate and re-upgrade. Detailed information could be found in app/model.py.**
+
 After the database config above, run the following commands in the app direction in the windows commandline:
 
 ```
@@ -43,9 +45,7 @@ When testing functions in the browser, please don't forget to comment the inputs
 
 ### Unit testing
 
-The unit test for the modules completed has been partly implemented in /test.py. But since this unit test program is completed long long ago, then it should not succeed with the current app/views.py.
-
-This would be improved in few days.
+The unit test for the modules completed has been implemented in /test.py.
 
 The database name is changed in the testing environment. The commands for creating testing database are given below:
 

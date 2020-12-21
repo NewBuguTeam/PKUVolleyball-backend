@@ -596,3 +596,17 @@ def confirmPoints():
             '''
 
 
+@umpire.route('/umpireRequest/', methods = ['GET', 'POST']
+def umpireRequest():
+    curIden = testIdentity()
+    if curIden == 1:
+            # no permission, error
+        return 'no permission'
+    elif curIden == -1:
+        # not login yet, error
+        return 'not login yet'
+    
+    if request.method == 'POST':
+        pass
+    else:
+        pass

@@ -6,8 +6,11 @@ from app import db
 umpire_match = db.Table('umpire_match',
         db.Column('umpireID', db.Integer, db.ForeignKey('users.id')),
         db.Column('matchID', db.Integer, db.ForeignKey('matches.id')),
-        # ident: 0 means umpire, 1 means vice umpire
-        db.Column('ident', db.Integer)
+        )
+        
+viceumpire_match = db.Table('viceumpire_match',
+        db.Column('umpireID', db.Integer, db.ForeignKey('users.id')),
+        db.Column('matchID', db.Integer, db.ForeignKey('matches.id')),
         )
 
 class User(db.Model):
@@ -20,7 +23,8 @@ class User(db.Model):
     icon = db.Column(db.String(1024))
     school = db.Column(db.String(16))
     umpireFee = db.Column(db.Integer)
-    toOfficiateAt = db.relationship('Match', secondary = umpire_match)
+    toBeUmpireIn = db.relationship('Match', secondary = umpire_match, backref = 'umpire')
+    toBeViceUmpireIn = db.relationship('Match', secondary = viceumpire_match, backref = 'viceUmpire')
 
 class Team(db.Model):
     __tablename__ = 'teams'
@@ -43,8 +47,12 @@ class Match(db.Model):
     teamA = db.Column(db.String(16), db.ForeignKey('teams.name'))
     teamB = db.Column(db.String(16), db.ForeignKey('teams.name'))
     point = db.Column(db.String(8))
-    umpire = db.Column(db.Integer, db.ForeignKey('users.id'))
-    viceUmpire = db.Column(db.Integer, db.ForeignKey('users.id'))
+    # We use 'backref' in db.relationship instead of declaring these 2 columns here
+    #  so there would **not** be these columns explicitly in the database
+    #  but we can still request for a query with class Match (i.e. this class) in python
+    #  please see app/views.py for more information.
+    # umpire = db.Column(db.Integer, db.ForeignKey('users.id'))
+    # viceUmpire = db.Column(db.Integer, db.ForeignKey('users.id'))
 
 class Game(db.Model):
     __tablename__ = 'games'

@@ -12,6 +12,7 @@ from . import guest_blueprint as guest
 from . import umpire_blueprint as umpire
 from . import admin_blueprint as admin
 from sqlalchemy import or_, and_
+from threading import Lock
 
 
 def string_toDatetime(string):
@@ -202,7 +203,7 @@ def index():
 @guest.route('/login/', methods = ['GET', 'POST'])
 def login():
     returnDict = {
-        'success': None,
+        'success': False,
         'username': '',
         'isAdmin': None,
         'school': '',
@@ -216,23 +217,21 @@ def login():
         return json.dumps(returnDict)
     else:
         if request.method == 'POST':
-            # '''
+            '''
             username = json.loads(request.values.get("username"))
             password = json.loads(request.values.get("password"))
             '''
             username = request.form['username']
             password = request.form['password']
-            '''
+            # '''
             current_user = db.session.query(User).filter(User.username == username).first()
             if current_user is None:
                 # username doesn't exist
-                returnDict['success'] = False
                 returnDict['errorType'] = 'username'
                 returnDict['username'] = username
                 return json.dumps(returnDict)
             elif current_user.password != password:
                 # wrong password
-                returnDict['success'] = False
                 returnDict['errorType'] = 'password'
                 return json.dumps(returnDict)
             else:
@@ -521,13 +520,19 @@ def matchInfo(id):
 
 @umpire.route('/confirmPoints/', methods = ['GET', 'POST'])
 def confirmPoints():
+    returnDict = {
+        'success': False,
+        'errorType': ''
+    }
     curIden = testIdentity()
     if curIden == 1:
-            # no permission, error
-        return 'no permission'
+        # no permission, error
+        returnDict['errorType'] = 'no permission'
+        return json.dumps(returnDict)
     elif curIden == -1:
         # not login yet, error
-        return 'not login yet'
+        returnDict['errorType'] = 'not login yet'
+        return json.dumps(returnDict)
     if request.method == 'POST':
         # '''
         id = int(json.loads(request.values.get("id")))
@@ -539,22 +544,15 @@ def confirmPoints():
         detailedPoints = json.loads(request.form["detailedPoints"])
         '''
         
-        returnDict = {
-            'success': None,
-            'error': ''
-        }
-        
         curMatch = db.session.query(Match).filter(Match.id == id).first()
         if curMatch is None:
-            returnDict['success'] = False
-            returnDict['error'] = 'Match id doesn\'t exist'
+            returnDict['errorType'] = 'Match id doesn\'t exist'
             return json.dumps(returnDict)
         
         intpoint = [int(p) for p in point.split(':')]
         gameNum = sum(intpoint)
         if gameNum != len(detailedPoints):
-            returnDict['success'] = False
-            returnDict['error'] = 'Number of games doesn\'t match the point'
+            returnDict['errorType'] = 'Number of games doesn\'t match the point'
             return json.dumps(returnDict)
         
         pointTest = [0, 0]
@@ -565,8 +563,7 @@ def confirmPoints():
             else:
                 pointTest[1] = pointTest[1] + 1
         if intpoint != pointTest:
-            returnDict['success'] = False
-            returnDict['error'] = 'Detailed points doesn\'t match the point'
+            returnDict['errorType'] = 'Detailed points doesn\'t match the point'
             return json.dumps(returnDict)
             
         curMatch.point = point
@@ -596,17 +593,92 @@ def confirmPoints():
             '''
 
 
-@umpire.route('/umpireRequest/', methods = ['GET', 'POST']
+umpireRequestLock = Lock()
+'''
+A naive solution here: use only 1 lock for the whole match table
+Better solution may be given later
+identity: 1 for umpire, 2 for vice umpire
+type: 0 for entering, -1 for quiting
+'''
+@umpire.route('/umpireRequest/', methods = ['GET', 'POST'])
 def umpireRequest():
+    returnDict = {
+        'success': False,
+        'errorType': ''
+    }
     curIden = testIdentity()
     if curIden == 1:
-            # no permission, error
-        return 'no permission'
+        # no permission, error
+        returnDict['errorType'] = 'no permission'
+        return json.dumps(returnDict)
     elif curIden == -1:
         # not login yet, error
-        return 'not login yet'
-    
+        returnDict['errorType'] = 'not login yet'
+        return json.dumps(returnDict)
+        
     if request.method == 'POST':
-        pass
+        
+        '''
+        id = int(json.loads(request.values.get("id")))
+        identity = int(json.loads(request.values.get("identity")))
+        type = int(json.loads(request.values.get("type")))
+        '''
+        id = int(request.form["id"])
+        identity = int(request.form["identity"])
+        type = int(request.form["type"])
+        # '''
+        if identity != 1 and identity != 2:
+            returnDict['errorType'] = 'request code'
+            return json.dumps(returnDict)
+            
+        if type != 0 and type != -1:
+            returnDict['errorType'] = 'request type'
+            return json.dumps(returnDict)
+        
+        match = db.session.query(Match).filter(Match.id == id).first()
+        if match is None:
+            returnDict['errorType'] = 'match id'
+            return json.dumps(returnDict)
+            
+        currentUser = db.session.query(User).filter(User.username == session['username']).first()
+        umpireRequestLock.acquire()
+        try:
+            if type == -1:
+                if identity == 1:
+                    if currentUser in match.umpire:
+                        currentUser.toBeUmpireIn.remove(match)
+                        returnDict['success'] = True
+                        return json.dumps(returnDict)
+                else:
+                    if currentUser in match.viceUmpire:
+                        currentUser.toBeViceUmpireIn.remove(match)
+                        returnDict['success'] = True
+                        return json.dumps(returnDict)
+                returnDict['errorType'] = 'quiting'
+            else:
+                if identity == 1:
+                    if len(match.umpire) == 0:
+                        currentUser.toBeUmpireIn.append(match)
+                        returnDict['success'] = True
+                        return json.dumps(returnDict)
+                else:
+                    if len(match.viceUmpire) == 0:
+                        currentUser.toBeViceUmpireIn.append(match)
+                        returnDict['success'] = True
+                        return json.dumps(returnDict)
+                returnDict['errorType'] = 'position occupied'
+            return json.dumps(returnDict)
+        finally:
+            db.session.commit()
+            umpireRequestLock.release()
     else:
-        pass
+        # GET method gives a form here for testing database & logic
+        return '''
+        <form action = "" method = "post">
+            <p><input type = "text" name = "id"></p>
+            <p><input type = "text" name = "identity"></p>
+            <p><input type = "text" name = "type"></p>
+            <p><input type = "submit" value = "确定"></p>
+        </form>
+            '''
+        

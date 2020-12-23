@@ -88,7 +88,7 @@ def school2group(school):
 def addMatch():
     curIden = testIdentity()
     if curIden == 0:
-            # no permission, error
+        # no permission, error
         return 'no permission'
     elif curIden == -1:
         # not login yet, error
@@ -217,13 +217,13 @@ def login():
         return json.dumps(returnDict)
     else:
         if request.method == 'POST':
-            '''
+            # '''
             username = json.loads(request.values.get("username"))
             password = json.loads(request.values.get("password"))
             '''
             username = request.form['username']
             password = request.form['password']
-            # '''
+            '''
             current_user = db.session.query(User).filter(User.username == username).first()
             if current_user is None:
                 # username doesn't exist
@@ -427,13 +427,17 @@ def viewMatches():
         # convert database object into dict and then JSON
         
         for m in matches:
-            if m.umpire is not None:
-                umpireIcon = db.session.query(User).filter(User.id == m.umpire).first().icon
+            if len(m.umpire) != 0:
+                umpireID = m.umpire[0].id
+                umpireIcon = m.umpire[0].icon
             else:
+                umpireID = None
                 umpireIcon = ''
-            if m.viceUmpire is not None:
-                viceUmpireIcon = db.session.query(User).filter(User.id == m.viceUmpire).first().icon
+            if len(m.viceUmpire) != 0:
+                viceUmpireID = m.viceUmpire[0].id
+                viceUmpireIcon = m.viceUmpire[0].icon
             else:
+                viceUmpireID = None
                 viceUmpireIcon = ''
             match_dict = {
                 'id': m.id,
@@ -444,9 +448,9 @@ def viewMatches():
                 'teamA': m.teamA,
                 'teamB': m.teamB,
                 'location': m.location,
-                'umpire': m.umpire,
+                'umpire': umpireID,
                 'umpireIcon': umpireIcon,
-                'viceUmpire': m.viceUmpire,
+                'viceUmpire': viceUmpireID,
                 'viceUmpireIcon': viceUmpireIcon,
                 'point': m.point,
             }
@@ -490,13 +494,17 @@ def matchInfo(id):
             }
             game_list.append(game_dict)
             
-        if match.umpire is not None:
-            umpireIcon = db.session.query(User).filter(User.id == match.umpire).first().icon
+        if len(match.umpire) != 0:
+            umpireID = match.umpire[0].id
+            umpireIcon = match.umpire[0].icon
         else:
+            umpireID = None
             umpireIcon = ''
-        if match.viceUmpire is not None:
-            viceUmpireIcon = db.session.query(User).filter(User.id == match.viceUmpire).first().icon
+        if len(match.viceUmpire) != 0:
+            viceUmpireID = match.viceUmpire[0].id
+            viceUmpireIcon = match.viceUmpire[0].icon
         else:
+            viceUmpireID = None
             viceUmpireIcon = ''
                 
         match_dict = {
@@ -508,9 +516,9 @@ def matchInfo(id):
             'teamA': match.teamA,
             'teamB': match.teamB,
             'location': match.location,
-            'umpire': match.umpire,
+            'umpire': umpireID,
             'umpireIcon': umpireIcon,
-            'viceUmpire': match.viceUmpire,
+            'viceUmpire': viceUmpireID,
             'viceUmpireIcon': viceUmpireIcon,
             'point': match.point,
             'detailedPoints': game_list

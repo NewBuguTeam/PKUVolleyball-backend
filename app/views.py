@@ -109,7 +109,7 @@ def addMatch():
         matchTime = "2020-10-10 20:00:00"
         gender = 'M'
         stage = 'D'
-        # '''
+        '''
         
         try:
             Agroup = db.session.query(Team).filter(Team.name == teamA, Team.gender == gender).first().inGroup
@@ -131,8 +131,7 @@ def addMatch():
 
         newMatch = Match(
             id = 0, location = location, matchTime = matchTime, gender = gender,
-            stage = stage, teamA = teamA, teamB = teamB, point = "0:0",
-            umpire = None, viceUmpire = None
+            stage = stage, teamA = teamA, teamB = teamB, point = "0:0"
         )
         db.session.add(newMatch)
         db.session.commit()
@@ -384,13 +383,13 @@ def viewMatches():
         matchDays = 2
         direction = 'D'
         '''
-        print('viewMatches', beginsAt)
+        print('viewMatches', beginsAt, matchDays, direction)
         
         matchList = []
         if direction == 'U':
             matches = db.session.query(Match).filter(Match.matchTime < (beginsAt + " 00:00:00")).all()
         else:
-            matches = db.session.query(Match).filter(Match.matchTime > (beginsAt + " 00:00:00")).all()
+            matches = db.session.query(Match).filter(Match.matchTime > (beginsAt + " 23:59:59")).all()
         
         def getMatchTime(m):
             return m.matchTime
@@ -626,7 +625,7 @@ def umpireRequest():
         
     if request.method == 'POST':
         
-        '''
+        # '''
         id = int(json.loads(request.values.get("id")))
         identity = int(json.loads(request.values.get("identity")))
         type = int(json.loads(request.values.get("type")))
@@ -634,7 +633,7 @@ def umpireRequest():
         id = int(request.form["id"])
         identity = int(request.form["identity"])
         type = int(request.form["type"])
-        # '''
+        '''
         if identity != 1 and identity != 2:
             returnDict['errorType'] = 'request code'
             return json.dumps(returnDict)
@@ -665,12 +664,18 @@ def umpireRequest():
                 returnDict['errorType'] = 'quiting'
             else:
                 if identity == 1:
-                    if len(match.umpire) == 0:
+                    if currentUser in match.viceUmpire:
+                        returnDict['errorType'] = 'is already an umpire'
+                        return json.dumps(returnDict)
+                    elif len(match.umpire) == 0:
                         currentUser.toBeUmpireIn.append(match)
                         returnDict['success'] = True
                         return json.dumps(returnDict)
                 else:
-                    if len(match.viceUmpire) == 0:
+                    if currentUser in match.umpire:
+                        returnDict['errorType'] = 'is already an umpire'
+                        return json.dumps(returnDict)
+                    elif len(match.viceUmpire) == 0:
                         currentUser.toBeViceUmpireIn.append(match)
                         returnDict['success'] = True
                         return json.dumps(returnDict)

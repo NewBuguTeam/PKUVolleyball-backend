@@ -223,21 +223,21 @@ def login():
             username = request.form['username']
             password = request.form['password']
             '''
-            current_user = db.session.query(User).filter(User.username == username).first()
-            if current_user is None:
+            currentUser = db.session.query(User).filter(User.username == username).first()
+            if currentUser is None:
                 # username doesn't exist
                 returnDict['errorType'] = 'username'
                 returnDict['username'] = username
                 return json.dumps(returnDict)
-            elif current_user.password != password:
+            elif currentUser.password != password:
                 # wrong password
                 returnDict['errorType'] = 'password'
                 return json.dumps(returnDict)
             else:
                 # login successfully
                 session['username'] = username
-                session['isAdmin'] = current_user.isAdmin
-                session['school'] = current_user.school
+                session['isAdmin'] = currentUser.isAdmin
+                session['school'] = currentUser.school
                 returnDict['success'] = True
                 returnDict['username'] = session['username']
                 returnDict['isAdmin'] = session['isAdmin']
@@ -694,4 +694,63 @@ def umpireRequest():
             <p><input type = "submit" value = "确定"></p>
         </form>
             '''
-        
+
+
+@umpire.route('/matchesToParticipateIn/')
+def myMatches():
+    returnDict = {
+        'success': False,
+        'result': [],
+        'errorType': ''
+    }
+    curIden = testIdentity()
+    if curIden == 1:
+        # no permission, error
+        returnDict['errorType'] = 'no permission'
+        return json.dumps(returnDict)
+    elif curIden == -1:
+        # not login yet, error
+        returnDict['errorType'] = 'not login yet'
+        return json.dumps(returnDict)
+    
+    currentUser = db.session.query(User).filter(User.username == session['username']).first()
+    matches = []
+    for m in currentUser.toBeUmpireIn:
+        mDict = {
+            'id': m.id, 'teamA': m.teamA, 'teamB': m.teamB,
+            'matchTime': datetime_toString(m.matchTime), 'gender': m.gender,
+            'identity': 1       # which indicates umpire
+        }
+        matches.append(mDict)
+    for m in currentUser.toBeViceUmpireIn:
+        mDict = {
+            'id': m.id, 'teamA': m.teamA, 'teamB': m.teamB,
+            'matchTime': datetime_toString(m.matchTime), 'gender': m.gender,
+            'identity': 2       # which indicates vice umpire
+        }
+        matches.append(mDict)
+    matches.sort(key = lambda m:m['matchTime'])
+    
+    returnDict['success'] = True
+    
+    def getMatchDate(m):
+        return m['matchTime'].split(' ')[0]
+    
+    numM = len(matches)
+    if numM == 0:
+        return json.dumps(returnDict)
+    lastnum = 0
+    
+    for _ in range(numM-1):
+        if getMatchDate(matches[_+1]) != getMatchDate(matches[_]):
+            returnDict['result'].append(
+                {'date': getMatchDate(matches[_]), 'matches': matches[lastnum : _+1]}
+            )
+            lastnum = _+1
+    returnDict['result'].append(
+        {'date': getMatchDate(matches[numM-1]), 'matches': matches[lastnum : ]}
+    )
+    
+    return json.dumps(returnDict)
+    
+    

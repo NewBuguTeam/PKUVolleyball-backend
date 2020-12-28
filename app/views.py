@@ -222,7 +222,7 @@ def login():
             '''
             username = request.form['username']
             password = request.form['password']
-            '''
+            # '''
             currentUser = db.session.query(User).filter(User.username == username).first()
             if currentUser is None:
                 # username doesn't exist
@@ -374,15 +374,15 @@ def setGrouping():
 @guest.route('/viewMatches/', methods = ['GET', 'POST'])
 def viewMatches():
     if request.method == 'POST':
-        # '''
+        '''
         beginsAt = json.loads(request.values.get("beginsAt"))
         matchDays = int(json.loads(request.values.get("matchDaysRequesting")))
         direction = json.loads(request.values.get("direction"))
         '''
         beginsAt = request.form['beginsAt']
-        matchDays = 2
-        direction = 'D'
-        '''
+        matchDays = int(request.form['matchDaysRequesting'])
+        direction = request.form['direction']
+        # '''
         print('viewMatches', beginsAt, matchDays, direction)
         
         matchList = []
@@ -464,6 +464,8 @@ def viewMatches():
         return '''
         <form action = "" method = "post">
             <p><input type = "text" name = "beginsAt"></p>
+            <p><input type = "text" name = "matchDaysRequesting"></p>
+            <p><input type = "text" name = "direction"></p>
             <p><input type = "submit" value = "确定"></p>
         </form>
             '''
@@ -541,7 +543,7 @@ def confirmPoints():
         returnDict['errorType'] = 'not login yet'
         return json.dumps(returnDict)
     if request.method == 'POST':
-        # '''
+        '''
         id = int(json.loads(request.values.get("id")))
         point = json.loads(request.values.get("point"))
         detailedPoints = json.loads(json.loads(request.values.get("detailedPoints")))
@@ -549,7 +551,7 @@ def confirmPoints():
         id = int(request.form["id"])
         point = request.form["point"]
         detailedPoints = json.loads(request.form["detailedPoints"])
-        '''
+        # '''
         
         curMatch = db.session.query(Match).filter(Match.id == id).first()
         if curMatch is None:
@@ -625,7 +627,7 @@ def umpireRequest():
         
     if request.method == 'POST':
         
-        # '''
+        '''
         id = int(json.loads(request.values.get("id")))
         identity = int(json.loads(request.values.get("identity")))
         type = int(json.loads(request.values.get("type")))
@@ -633,7 +635,7 @@ def umpireRequest():
         id = int(request.form["id"])
         identity = int(request.form["identity"])
         type = int(request.form["type"])
-        '''
+        # '''
         if identity != 1 and identity != 2:
             returnDict['errorType'] = 'request code'
             return json.dumps(returnDict)

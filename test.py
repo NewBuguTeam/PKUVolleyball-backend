@@ -52,7 +52,7 @@ class TestBase(TestCase):
             matchTime = '2020-12-1 20:20:00',
             gender = 'M', stage = 'A',
             teamA = None, teamB = None,
-            point = '3:1', umpire = None, viceUmpire = None
+            point = '3:1'
         ))
         
         db_add(Game(
@@ -81,7 +81,7 @@ class TestBase(TestCase):
             matchTime = '2020-11-30 20:15:00',
             gender = 'M', stage = 'A',
             teamA = None, teamB = None,
-            point = None, umpire = None, viceUmpire = None
+            point = None
         ))
         
         db_add(Match(
@@ -90,7 +90,7 @@ class TestBase(TestCase):
             matchTime = '2020-11-29 15:20:00',
             gender = 'F', stage = 'B',
             teamA = None, teamB = None,
-            point = None, umpire = None, viceUmpire = None
+            point = None
         ))
         
         db_add(Match(
@@ -99,7 +99,7 @@ class TestBase(TestCase):
             matchTime = '2020-11-28 23:20:00',
             gender = 'M', stage = 'A',
             teamA = None, teamB = None,
-            point = None, umpire = None, viceUmpire = None
+            point = None
         ))
         
         db_add(Match(
@@ -108,7 +108,7 @@ class TestBase(TestCase):
             matchTime = '2020-12-1 08:20:00',
             gender = 'M', stage = 'A',
             teamA = None, teamB = None,
-            point = None, umpire = None, viceUmpire = None
+            point = None
         ))
         
         db_add(Match(
@@ -117,7 +117,7 @@ class TestBase(TestCase):
             matchTime = '2020-12-1 13:20:00',
             gender = 'M', stage = 'A',
             teamA = None, teamB = None,
-            point = None, umpire = None, viceUmpire = None
+            point = None
         ))
         
         db_add(Team(
@@ -213,7 +213,9 @@ class TestViews(TestBase):
         # test1: page loaded for the first time
         response = self.client.post(url_for('guest.viewMatches'), 
             data = {
-                'beginsAt': '9999-01-01'
+                'beginsAt': '9999-01-01',
+                'matchDaysRequesting': '2',
+                'direction': 'U'
             }
         )
         self.assertEqual(response.status_code, 200)
@@ -226,7 +228,9 @@ class TestViews(TestBase):
         # test2: page loaded for the second time
         response = self.client.post(url_for('guest.viewMatches'), 
             data = {
-                'beginsAt': '2020-11-30'
+                'beginsAt': '2020-11-30',
+                'matchDaysRequesting': '2',
+                'direction': 'U'
             }
         )
         self.assertEqual(response.status_code, 200)
@@ -234,7 +238,7 @@ class TestViews(TestBase):
         for i in range(len(data)-1):
             assert data[i]['time'] < data[i+1]['time']
             matchDate = data[i]['time'].split(' ')[0]
-            assert matchDate == '2020-12-29' or matchDate == '2020-11-28'
+            assert matchDate == '2020-11-29' or matchDate == '2020-11-28'
         
        
     def test_viewGrouping(self):

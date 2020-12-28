@@ -94,7 +94,7 @@ def addMatch():
         # not login yet, error
         return 'not login yet'
     if request.method == 'POST':
-        # '''
+        '''
         gender = json.loads(request.values.get("gender"))
         stage = json.loads(request.values.get("for_group_X_or_knockout_X"))
         # what type is "time"?
@@ -109,7 +109,7 @@ def addMatch():
         matchTime = "2020-10-10 20:00:00"
         gender = 'M'
         stage = 'D'
-        '''
+        # '''
         
         try:
             Agroup = db.session.query(Team).filter(Team.name == teamA, Team.gender == gender).first().inGroup
@@ -158,7 +158,7 @@ def addUser():
         # not login yet, error
         return 'not login yet'
     if request.method == 'POST':
-        # '''
+        '''
         newUsername = json.loads(request.values.get("newUsername"))
         newPassword = json.loads(request.values.get("newPassword"))
         newUserIsAdmin = bool(json.loads(request.values.get("newIsAdmin")))
@@ -168,7 +168,7 @@ def addUser():
         newPassword = request.form["newPassword"]
         newUserIsAdmin = ("newUserIsAdmin" in request.form)
         newSchool = request.form["newUserSchool"]
-        '''
+        # '''
         
         # maybe school name should be checked here?
         
@@ -216,7 +216,7 @@ def login():
         return json.dumps(returnDict)
     else:
         if request.method == 'POST':
-            # '''
+            '''
             username = json.loads(request.values.get("username"))
             password = json.loads(request.values.get("password"))
             '''
@@ -302,13 +302,13 @@ def setGrouping():
         return 'not login yet'
         
     if request.method == 'POST':
-        # '''
+        '''
         gender = json.loads(request.values.get("gender"))
         group = json.loads(request.values.get("group"))
         '''
         gender = request.form['gender']
         group = json.loads(request.form['group'])
-        '''
+        # '''
         groupSize = []
         teams = set()
         

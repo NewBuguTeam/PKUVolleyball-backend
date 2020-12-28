@@ -12,6 +12,7 @@ from . import guest_blueprint as guest
 from . import umpire_blueprint as umpire
 from . import admin_blueprint as admin
 from sqlalchemy import or_, and_
+from threading import Lock
 
 
 def string_toDatetime(string):
@@ -87,7 +88,7 @@ def school2group(school):
 def addMatch():
     curIden = testIdentity()
     if curIden == 0:
-            # no permission, error
+        # no permission, error
         return 'no permission'
     elif curIden == -1:
         # not login yet, error
@@ -130,8 +131,7 @@ def addMatch():
 
         newMatch = Match(
             id = 0, location = location, matchTime = matchTime, gender = gender,
-            stage = stage, teamA = teamA, teamB = teamB, point = "0:0",
-            umpire = None, viceUmpire = None
+            stage = stage, teamA = teamA, teamB = teamB, point = "0:0"
         )
         db.session.add(newMatch)
         db.session.commit()
@@ -161,8 +161,8 @@ def addUser():
         '''
         newUsername = json.loads(request.values.get("newUsername"))
         newPassword = json.loads(request.values.get("newPassword"))
-        newUserIsAdmin = boolean(json.loads(request.values.get("newUserIsAdmin")))
-        newSchool = json.loads(request.values.get("newUserSchool"))
+        newUserIsAdmin = bool(json.loads(request.values.get("newIsAdmin")))
+        newSchool = json.loads(request.values.get("newSchool"))
         '''
         newUsername = request.form["newUsername"]
         newPassword = request.form["newPassword"]
@@ -202,7 +202,7 @@ def index():
 @guest.route('/login/', methods = ['GET', 'POST'])
 def login():
     returnDict = {
-        'success': None,
+        'success': False,
         'username': '',
         'isAdmin': None,
         'school': '',
@@ -222,24 +222,22 @@ def login():
             '''
             username = request.form['username']
             password = request.form['password']
-            # '''
-            current_user = db.session.query(User).filter(User.username == username).first()
-            if current_user is None:
+            '''
+            currentUser = db.session.query(User).filter(User.username == username).first()
+            if currentUser is None:
                 # username doesn't exist
-                returnDict['success'] = False
                 returnDict['errorType'] = 'username'
                 returnDict['username'] = username
                 return json.dumps(returnDict)
-            elif current_user.password != password:
+            elif currentUser.password != password:
                 # wrong password
-                returnDict['success'] = False
                 returnDict['errorType'] = 'password'
                 return json.dumps(returnDict)
             else:
                 # login successfully
                 session['username'] = username
-                session['isAdmin'] = current_user.isAdmin
-                session['school'] = current_user.school
+                session['isAdmin'] = currentUser.isAdmin
+                session['school'] = currentUser.school
                 returnDict['success'] = True
                 returnDict['username'] = session['username']
                 returnDict['isAdmin'] = session['isAdmin']
@@ -376,12 +374,22 @@ def setGrouping():
 @guest.route('/viewMatches/', methods = ['GET', 'POST'])
 def viewMatches():
     if request.method == 'POST':
-        # beginsAt = json.loads(request.values.get("beginsAt"))
+        # '''
+        beginsAt = json.loads(request.values.get("beginsAt"))
+        matchDays = int(json.loads(request.values.get("matchDaysRequesting")))
+        direction = json.loads(request.values.get("direction"))
+        '''
         beginsAt = request.form['beginsAt']
-        print('viewMatches', beginsAt)
+        matchDays = 2
+        direction = 'D'
+        '''
+        print('viewMatches', beginsAt, matchDays, direction)
         
         matchList = []
-        matches = db.session.query(Match).filter(Match.matchTime < (beginsAt + " 00:00:00")).all()
+        if direction == 'U':
+            matches = db.session.query(Match).filter(Match.matchTime < (beginsAt + " 00:00:00")).all()
+        else:
+            matches = db.session.query(Match).filter(Match.matchTime > (beginsAt + " 23:59:59")).all()
         
         def getMatchTime(m):
             return m.matchTime
@@ -394,27 +402,42 @@ def viewMatches():
         
         totalNumMatches = len(matches)
         matchDayCounter = 0
-        for _ in range(totalNumMatches-1, -1, -1):
-            curMatchDate = datetime_toString(matches[_].matchTime).split(' ')[0]
-            if curMatchDate != beginsAt:
-                if matchDayCounter == 2:
-                    matches = matches[_+1 : ]
-                    break
-                else:
-                    matchDayCounter = matchDayCounter + 1
-                    beginsAt = curMatchDate
-                    
+        if direction == 'U':
+            for _ in range(totalNumMatches-1, -1, -1):
+                curMatchDate = datetime_toString(matches[_].matchTime).split(' ')[0]
+                if curMatchDate != beginsAt:
+                    if matchDayCounter == matchDays:
+                        matches = matches[_+1 : ]
+                        break
+                    else:
+                        matchDayCounter = matchDayCounter + 1
+                        beginsAt = curMatchDate
+        else:
+            for _ in range(totalNumMatches):
+                curMatchDate = datetime_toString(matches[_].matchTime).split(' ')[0]
+                if curMatchDate != beginsAt:
+                    if matchDayCounter == matchDays:
+                        matches = matches[:_]
+                        break
+                    else:
+                        matchDayCounter = matchDayCounter + 1
+                        beginsAt = curMatchDate
+                        
         # convert database object into dict and then JSON
         
         for m in matches:
-            if m.umpire is not None:
-                umpireIcon = db.session.query(User).filter(User.id == m.umpire).first().icon
+            if len(m.umpire) != 0:
+                umpireID = m.umpire[0].id
+                umpireIcon = m.umpire[0].icon
             else:
-                umpireIcon = None
-            if m.viceUmpire is not None:
-                viceUmpireIcon = db.session.query(User).filter(User.id == m.viceUmpire).first().icon
+                umpireID = None
+                umpireIcon = ''
+            if len(m.viceUmpire) != 0:
+                viceUmpireID = m.viceUmpire[0].id
+                viceUmpireIcon = m.viceUmpire[0].icon
             else:
-                viceUmpireIcon = None
+                viceUmpireID = None
+                viceUmpireIcon = ''
             match_dict = {
                 'id': m.id,
                 'gender': m.gender,
@@ -424,9 +447,9 @@ def viewMatches():
                 'teamA': m.teamA,
                 'teamB': m.teamB,
                 'location': m.location,
-                'umpire': m.umpire,
+                'umpire': umpireID,
                 'umpireIcon': umpireIcon,
-                'viceUmpire': m.viceUmpire,
+                'viceUmpire': viceUmpireID,
                 'viceUmpireIcon': viceUmpireIcon,
                 'point': m.point,
             }
@@ -470,14 +493,18 @@ def matchInfo(id):
             }
             game_list.append(game_dict)
             
-        if match.umpire is not None:
-            umpireIcon = db.session.query(User).filter(User.id == match.umpire).first().icon
+        if len(match.umpire) != 0:
+            umpireID = match.umpire[0].id
+            umpireIcon = match.umpire[0].icon
         else:
-            umpireIcon = None
-        if match.viceUmpire is not None:
-            viceUmpireIcon = db.session.query(User).filter(User.id == match.viceUmpire).first().icon
+            umpireID = None
+            umpireIcon = ''
+        if len(match.viceUmpire) != 0:
+            viceUmpireID = match.viceUmpire[0].id
+            viceUmpireIcon = match.viceUmpire[0].icon
         else:
-            viceUmpireIcon = None
+            viceUmpireID = None
+            viceUmpireIcon = ''
                 
         match_dict = {
             'id': match.id,
@@ -488,12 +515,242 @@ def matchInfo(id):
             'teamA': match.teamA,
             'teamB': match.teamB,
             'location': match.location,
-            'umpire': match.umpire,
+            'umpire': umpireID,
             'umpireIcon': umpireIcon,
-            'viceUmpire': match.viceUmpire,
+            'viceUmpire': viceUmpireID,
             'viceUmpireIcon': viceUmpireIcon,
             'point': match.point,
             'detailedPoints': game_list
         }
         return json.dumps(match_dict)
+
+
+@umpire.route('/confirmPoints/', methods = ['GET', 'POST'])
+def confirmPoints():
+    returnDict = {
+        'success': False,
+        'errorType': ''
+    }
+    curIden = testIdentity()
+    if curIden == 1:
+        # no permission, error
+        returnDict['errorType'] = 'no permission'
+        return json.dumps(returnDict)
+    elif curIden == -1:
+        # not login yet, error
+        returnDict['errorType'] = 'not login yet'
+        return json.dumps(returnDict)
+    if request.method == 'POST':
+        # '''
+        id = int(json.loads(request.values.get("id")))
+        point = json.loads(request.values.get("point"))
+        detailedPoints = json.loads(json.loads(request.values.get("detailedPoints")))
+        '''
+        id = int(request.form["id"])
+        point = request.form["point"]
+        detailedPoints = json.loads(request.form["detailedPoints"])
+        '''
+        
+        curMatch = db.session.query(Match).filter(Match.id == id).first()
+        if curMatch is None:
+            returnDict['errorType'] = 'Match id doesn\'t exist'
+            return json.dumps(returnDict)
+        
+        intpoint = [int(p) for p in point.split(':')]
+        gameNum = sum(intpoint)
+        if gameNum != len(detailedPoints):
+            returnDict['errorType'] = 'Number of games doesn\'t match the point'
+            return json.dumps(returnDict)
+        
+        pointTest = [0, 0]
+        for g in detailedPoints:
+            gPoint = g['point'].split(':')
+            if int(gPoint[0]) > int(gPoint[1]):
+                pointTest[0] = pointTest[0] + 1
+            else:
+                pointTest[1] = pointTest[1] + 1
+        if intpoint != pointTest:
+            returnDict['errorType'] = 'Detailed points doesn\'t match the point'
+            return json.dumps(returnDict)
+            
+        curMatch.point = point
+        db.session.commit()
+        
+        curGameNum = 1
+        for g in detailedPoints:
+            game = Game(
+                inMatchID = id, num = curGameNum, point = g['point'], 
+                duration = g['duration'], gameProcedure = g['procedure']
+            )
+            print(game)
+            db.session.add(game)
+            db.session.commit()
+            curGameNum = curGameNum + 1
+        returnDict['success'] = True
+        return json.dumps(returnDict)
+    else:
+        # GET method gives a form here for testing database & logic
+        return '''
+        <form action = "" method = "post">
+            <p><input type = "text" name = "id"></p>
+            <p><input type = "text" name = "point"></p>
+            <p><input type = "text" name = "detailedPoints"></p>
+            <p><input type = "submit" value = "确定"></p>
+        </form>
+            '''
+
+
+umpireRequestLock = Lock()
+'''
+A naive solution here: use only 1 lock for the whole match table
+Better solution may be given later
+identity: 1 for umpire, 2 for vice umpire
+type: 0 for entering, -1 for quiting
+'''
+@umpire.route('/umpireRequest/', methods = ['GET', 'POST'])
+def umpireRequest():
+    returnDict = {
+        'success': False,
+        'errorType': ''
+    }
+    curIden = testIdentity()
+    if curIden == 1:
+        # no permission, error
+        returnDict['errorType'] = 'no permission'
+        return json.dumps(returnDict)
+    elif curIden == -1:
+        # not login yet, error
+        returnDict['errorType'] = 'not login yet'
+        return json.dumps(returnDict)
+        
+    if request.method == 'POST':
+        
+        # '''
+        id = int(json.loads(request.values.get("id")))
+        identity = int(json.loads(request.values.get("identity")))
+        type = int(json.loads(request.values.get("type")))
+        '''
+        id = int(request.form["id"])
+        identity = int(request.form["identity"])
+        type = int(request.form["type"])
+        '''
+        if identity != 1 and identity != 2:
+            returnDict['errorType'] = 'request code'
+            return json.dumps(returnDict)
+            
+        if type != 0 and type != -1:
+            returnDict['errorType'] = 'request type'
+            return json.dumps(returnDict)
+        
+        match = db.session.query(Match).filter(Match.id == id).first()
+        if match is None:
+            returnDict['errorType'] = 'match id'
+            return json.dumps(returnDict)
+            
+        currentUser = db.session.query(User).filter(User.username == session['username']).first()
+        umpireRequestLock.acquire()
+        try:
+            if type == -1:
+                if identity == 1:
+                    if currentUser in match.umpire:
+                        currentUser.toBeUmpireIn.remove(match)
+                        returnDict['success'] = True
+                        return json.dumps(returnDict)
+                else:
+                    if currentUser in match.viceUmpire:
+                        currentUser.toBeViceUmpireIn.remove(match)
+                        returnDict['success'] = True
+                        return json.dumps(returnDict)
+                returnDict['errorType'] = 'quiting'
+            else:
+                if identity == 1:
+                    if currentUser in match.viceUmpire:
+                        returnDict['errorType'] = 'is already an umpire'
+                        return json.dumps(returnDict)
+                    elif len(match.umpire) == 0:
+                        currentUser.toBeUmpireIn.append(match)
+                        returnDict['success'] = True
+                        return json.dumps(returnDict)
+                else:
+                    if currentUser in match.umpire:
+                        returnDict['errorType'] = 'is already an umpire'
+                        return json.dumps(returnDict)
+                    elif len(match.viceUmpire) == 0:
+                        currentUser.toBeViceUmpireIn.append(match)
+                        returnDict['success'] = True
+                        return json.dumps(returnDict)
+                returnDict['errorType'] = 'position occupied'
+            return json.dumps(returnDict)
+        finally:
+            db.session.commit()
+            umpireRequestLock.release()
+    else:
+        # GET method gives a form here for testing database & logic
+        return '''
+        <form action = "" method = "post">
+            <p><input type = "text" name = "id"></p>
+            <p><input type = "text" name = "identity"></p>
+            <p><input type = "text" name = "type"></p>
+            <p><input type = "submit" value = "确定"></p>
+        </form>
+            '''
+
+
+@umpire.route('/matchesToParticipateIn/')
+def myMatches():
+    returnDict = {
+        'success': False,
+        'result': [],
+        'errorType': ''
+    }
+    curIden = testIdentity()
+    if curIden == 1:
+        # no permission, error
+        returnDict['errorType'] = 'no permission'
+        return json.dumps(returnDict)
+    elif curIden == -1:
+        # not login yet, error
+        returnDict['errorType'] = 'not login yet'
+        return json.dumps(returnDict)
+    
+    currentUser = db.session.query(User).filter(User.username == session['username']).first()
+    matches = []
+    for m in currentUser.toBeUmpireIn:
+        mDict = {
+            'id': m.id, 'teamA': m.teamA, 'teamB': m.teamB,
+            'matchTime': datetime_toString(m.matchTime), 'gender': m.gender,
+            'identity': 1       # which indicates umpire
+        }
+        matches.append(mDict)
+    for m in currentUser.toBeViceUmpireIn:
+        mDict = {
+            'id': m.id, 'teamA': m.teamA, 'teamB': m.teamB,
+            'matchTime': datetime_toString(m.matchTime), 'gender': m.gender,
+            'identity': 2       # which indicates vice umpire
+        }
+        matches.append(mDict)
+    matches.sort(key = lambda m:m['matchTime'])
+    
+    returnDict['success'] = True
+    
+    def getMatchDate(m):
+        return m['matchTime'].split(' ')[0]
+    
+    numM = len(matches)
+    if numM == 0:
+        return json.dumps(returnDict)
+    lastnum = 0
+    
+    for _ in range(numM-1):
+        if getMatchDate(matches[_+1]) != getMatchDate(matches[_]):
+            returnDict['result'].append(
+                {'date': getMatchDate(matches[_]), 'matches': matches[lastnum : _+1]}
+            )
+            lastnum = _+1
+    returnDict['result'].append(
+        {'date': getMatchDate(matches[numM-1]), 'matches': matches[lastnum : ]}
+    )
+    
+    return json.dumps(returnDict)
+    
     

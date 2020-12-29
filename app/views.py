@@ -12,7 +12,7 @@ from . import guest_blueprint as guest
 from . import umpire_blueprint as umpire
 from . import admin_blueprint as admin
 from sqlalchemy import or_, and_
-from threading import Lock
+from threading import Lock, currentThread
 
 
 def string_toDatetime(string):
@@ -94,7 +94,7 @@ def addMatch():
         # not login yet, error
         return 'not login yet'
     if request.method == 'POST':
-        '''
+        # '''
         gender = json.loads(request.values.get("gender"))
         stage = json.loads(request.values.get("for_group_X_or_knockout_X"))
         # what type is "time"?
@@ -109,7 +109,7 @@ def addMatch():
         matchTime = "2020-10-10 20:00:00"
         gender = 'M'
         stage = 'D'
-        # '''
+        '''
         
         try:
             Agroup = db.session.query(Team).filter(Team.name == teamA, Team.gender == gender).first().inGroup
@@ -158,7 +158,7 @@ def addUser():
         # not login yet, error
         return 'not login yet'
     if request.method == 'POST':
-        '''
+        # '''
         newUsername = json.loads(request.values.get("newUsername"))
         newPassword = json.loads(request.values.get("newPassword"))
         newUserIsAdmin = bool(json.loads(request.values.get("newIsAdmin")))
@@ -168,7 +168,7 @@ def addUser():
         newPassword = request.form["newPassword"]
         newUserIsAdmin = ("newUserIsAdmin" in request.form)
         newSchool = request.form["newUserSchool"]
-        # '''
+        '''
         
         # maybe school name should be checked here?
         
@@ -216,7 +216,7 @@ def login():
         return json.dumps(returnDict)
     else:
         if request.method == 'POST':
-            '''
+            # '''
             username = json.loads(request.values.get("username"))
             password = json.loads(request.values.get("password"))
             '''
@@ -302,13 +302,13 @@ def setGrouping():
         return 'not login yet'
         
     if request.method == 'POST':
-        '''
+        # '''
         gender = json.loads(request.values.get("gender"))
         group = json.loads(request.values.get("group"))
         '''
         gender = request.form['gender']
         group = json.loads(request.form['group'])
-        # '''
+        '''
         groupSize = []
         teams = set()
         
@@ -647,19 +647,24 @@ def umpireRequest():
             returnDict['errorType'] = 'match id'
             return json.dumps(returnDict)
             
-        currentUser = db.session.query(User).filter(User.username == session['username']).first()
+        
         umpireRequestLock.acquire()
+        currentUser = db.session.query(User).filter(User.username == session['username']).first()
+        print(currentThread(), ', lock get')
+        print(currentThread(), currentUser.toBeUmpireIn, currentUser.toBeViceUmpireIn)
         try:
             if type == -1:
                 if identity == 1:
                     if currentUser in match.umpire:
                         currentUser.toBeUmpireIn.remove(match)
                         returnDict['success'] = True
+                        db.session.commit()
                         return json.dumps(returnDict)
                 else:
                     if currentUser in match.viceUmpire:
                         currentUser.toBeViceUmpireIn.remove(match)
                         returnDict['success'] = True
+                        db.session.commit()
                         return json.dumps(returnDict)
                 returnDict['errorType'] = 'quiting'
             else:
@@ -670,6 +675,9 @@ def umpireRequest():
                     elif len(match.umpire) == 0:
                         currentUser.toBeUmpireIn.append(match)
                         returnDict['success'] = True
+                        db.session.commit()
+                        currentUser = db.session.query(User).filter(User.username == session['username']).first()
+                        print(currentThread(), currentUser.toBeUmpireIn, currentUser.toBeViceUmpireIn)
                         return json.dumps(returnDict)
                 else:
                     if currentUser in match.umpire:
@@ -678,11 +686,14 @@ def umpireRequest():
                     elif len(match.viceUmpire) == 0:
                         currentUser.toBeViceUmpireIn.append(match)
                         returnDict['success'] = True
+                        db.session.commit()
+                        currentUser = db.session.query(User).filter(User.username == session['username']).first()
+                        print(currentThread(), currentUser.toBeUmpireIn, currentUser.toBeViceUmpireIn)
                         return json.dumps(returnDict)
                 returnDict['errorType'] = 'position occupied'
             return json.dumps(returnDict)
         finally:
-            db.session.commit()
+            print(currentThread(), ', lock release')
             umpireRequestLock.release()
     else:
         # GET method gives a form here for testing database & logic

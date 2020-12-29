@@ -212,7 +212,9 @@ def login():
         returnDict['success'] = True
         returnDict['username'] = session['username']
         returnDict['isAdmin'] = session['isAdmin']
-        returnDict['school'] = session['school']
+        currentUser = db.session.query(User).filter(User.username == session['username']).first()
+        returnDict['school'] = currentUser.school
+        returnDict['icon'] = currentUser.icon
         return json.dumps(returnDict)
     else:
         if request.method == 'POST':
@@ -237,11 +239,11 @@ def login():
                 # login successfully
                 session['username'] = username
                 session['isAdmin'] = currentUser.isAdmin
-                session['school'] = currentUser.school
                 returnDict['success'] = True
                 returnDict['username'] = session['username']
                 returnDict['isAdmin'] = session['isAdmin']
-                returnDict['school'] = session['school']
+                returnDict['school'] = currentUser.school
+                returnDict['icon'] = currentUser.icon
                 return json.dumps(returnDict)
         else:
             # GET method gives a form here for testing database
@@ -472,6 +474,7 @@ def viewMatches():
 @guest.route('/matchInfo/<id>/')
 def matchInfo(id):
     print('matchInfo:', id)
+    print(db.session.commit)
     match = db.session.query(Match).filter(Match.id == id).first()
     if match is None:
         # corresponding match doesn't exist
@@ -544,7 +547,7 @@ def confirmPoints():
         # '''
         id = int(json.loads(request.values.get("id")))
         point = json.loads(request.values.get("point"))
-        detailedPoints = json.loads(json.loads(request.values.get("detailedPoints")))
+        detailedPoints = json.loads(request.values.get("detailedPoints"))
         '''
         id = int(request.form["id"])
         point = request.form["point"]
@@ -728,14 +731,14 @@ def myMatches():
     matches = []
     for m in currentUser.toBeUmpireIn:
         mDict = {
-            'id': m.id, 'teamA': m.teamA, 'teamB': m.teamB,
+            'id': m.id, 'teamA': m.teamA, 'teamB': m.teamB, 'location': m.location,
             'matchTime': datetime_toString(m.matchTime), 'gender': m.gender,
             'identity': 1       # which indicates umpire
         }
         matches.append(mDict)
     for m in currentUser.toBeViceUmpireIn:
         mDict = {
-            'id': m.id, 'teamA': m.teamA, 'teamB': m.teamB,
+            'id': m.id, 'teamA': m.teamA, 'teamB': m.teamB, 'location': m.location,
             'matchTime': datetime_toString(m.matchTime), 'gender': m.gender,
             'identity': 2       # which indicates vice umpire
         }

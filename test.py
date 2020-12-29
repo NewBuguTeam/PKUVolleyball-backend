@@ -239,6 +239,21 @@ class TestViews(TestBase):
             assert data[i]['time'] < data[i+1]['time']
             matchDate = data[i]['time'].split(' ')[0]
             assert matchDate == '2020-11-29' or matchDate == '2020-11-28'
+            
+        # test3: page loaded for another direction
+        response = self.client.post(url_for('guest.viewMatches'), 
+            data = {
+                'beginsAt': '2020-11-30',
+                'matchDaysRequesting': '2',
+                'direction': 'D'
+            }
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)['matches']
+        for i in range(len(data)-1):
+            assert data[i]['time'] < data[i+1]['time']
+            matchDate = data[i]['time'].split(' ')[0]
+            assert matchDate == '2020-12-01'
         
        
     def test_viewGrouping(self):
@@ -459,7 +474,122 @@ class TestViews(TestBase):
         self.assertEqual(data['Mgroup'], 'B')
         self.assertEqual(data['Fgroup'], '')
         
-
+    
+    def test_umpireRequest_myMatches(self):
+        # login as umpire
+        self.client.post(url_for('guest.login'),
+            data = {
+                'username': 'bcd',
+                'password': 'bcd'
+            }
+        )
+        
+        # test1: request to be a umpire of a match
+        response = self.client.post(url_for('umpire.umpireRequest'),
+            data = {
+                'id': '1', 'identity': '1', 'type': '0'
+            }
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['success'], True)
+        
+        # test2: request to be a umpire of the same match again
+        response = self.client.post(url_for('umpire.umpireRequest'),
+            data = {
+                'id': '1', 'identity': '1', 'type': '0'
+            }
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['errorType'], 'position occupied')
+        
+        # test3: request to be a vice umpire of the same match
+        response = self.client.post(url_for('umpire.umpireRequest'),
+            data = {
+                'id': '1', 'identity': '2', 'type': '0'
+            }
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['errorType'], 'is already an umpire')
+        
+        # test4: get the matches to be umpire in
+        self.client.post(url_for('umpire.umpireRequest'),
+            data = {
+                'id': '2', 'identity': '2', 'type': '0'
+            }
+        )
+        response = self.client.get(url_for('umpire.myMatches'))
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['success'], True)
+        data = data['result']
+        self.assertEqual(len(data), 2)
+        for l in data:
+            for m in l['matches']:
+                self.assertEqual(m['matchTime'].split(' ')[0], l['date'])
+        
+        # test5: quit a not-participated match
+        response = self.client.post(url_for('umpire.umpireRequest'),
+            data = {
+                'id': '1', 'identity': '2', 'type': '-1'
+            }
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['errorType'], 'quiting')
+        
+        # test6: quit a participated match
+        response = self.client.post(url_for('umpire.umpireRequest'),
+            data = {
+                'id': '1', 'identity': '1', 'type': '-1'
+            }
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['success'], True)
+        response = self.client.get(url_for('umpire.myMatches'))
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['success'], True)
+        self.assertEqual(len(data['result']), 1)
+        
+    
+    def test_confirmPoints(self):
+        # login as umpire
+        self.client.post(url_for('guest.login'),
+            data = {
+                'username': 'bcd',
+                'password': 'bcd'
+            }
+        )
+        
+        response = self.client.post(url_for('umpire.confirmPoints'),
+            data = {
+                'id': '2', 'point': '1:3',
+                'detailedPoints': json.dumps(
+                    [
+                        {'point': '25:23', 'duration': '00:15:00', 'procedure': ''},
+                        {'point': '23:25', 'duration': '00:15:00', 'procedure': ''},
+                        {'point': '23:25', 'duration': '00:15:00', 'procedure': ''},
+                        {'point': '23:25', 'duration': '00:15:00', 'procedure': ''}
+                    ]
+                )
+            }
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data['success'], True)
+        
+        response = self.client.get(url_for('guest.matchInfo', id = 2))
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(len(data['detailedPoints']), 4)
+        
     
 if __name__ == '__main__':
     unittest.main()

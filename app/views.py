@@ -43,7 +43,7 @@ def testIdentity():
 #   variables: match: a query result from db
 def matchStatus(match):
     current_time = datetime.datetime.now()
-    if match.point is None:
+    if match.point is None or match.point == '0:0':
         if match.matchTime > current_time:
             return '未开始'
         else:
@@ -733,14 +733,16 @@ def myMatches():
         mDict = {
             'id': m.id, 'teamA': m.teamA, 'teamB': m.teamB, 'location': m.location,
             'matchTime': datetime_toString(m.matchTime), 'gender': m.gender,
-            'identity': 1       # which indicates umpire
+            'identity': 1,       # which indicates umpire
+            'status': matchStatus(m), 'group': m.stage
         }
         matches.append(mDict)
     for m in currentUser.toBeViceUmpireIn:
         mDict = {
             'id': m.id, 'teamA': m.teamA, 'teamB': m.teamB, 'location': m.location,
             'matchTime': datetime_toString(m.matchTime), 'gender': m.gender,
-            'identity': 2       # which indicates vice umpire
+            'identity': 2,       # which indicates vice umpire
+            'status': matchStatus(m), 'group': m.stage
         }
         matches.append(mDict)
     matches.sort(key = lambda m:m['matchTime'])

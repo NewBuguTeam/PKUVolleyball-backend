@@ -60,7 +60,7 @@ def matchStatus(match):
     given a school name, find its group in gender 'M' and 'F'.
     pay attention if the school belongs to a unified team.
 '''
-@guest.route('/school2group/<school>/')
+@guest.route('/school2group/<school>')
 def school2group(school):
     Mteam = db.session.query(Team).filter(
         Team.gender == 'M', or_(Team.name == school, 
@@ -84,7 +84,7 @@ def school2group(school):
     return json.dumps(returnDict)
     
     
-@admin.route('/addMatch/', methods = ['GET', 'POST'])
+@admin.route('/addMatch', methods = ['GET', 'POST'])
 def addMatch():
     curIden = testIdentity()
     if curIden == 0:
@@ -148,7 +148,7 @@ def addMatch():
                 '''
 
 
-@admin.route('/addUser/', methods = ['GET', 'POST'])
+@admin.route('/addUser', methods = ['GET', 'POST'])
 def addUser():
     curIden = testIdentity()
     if curIden == 0:
@@ -199,7 +199,7 @@ def index():
     return '''INDEX'''
 
 
-@guest.route('/login/', methods = ['GET', 'POST'])
+@guest.route('/login', methods = ['GET', 'POST'])
 def login():
     returnDict = {
         'success': False,
@@ -256,7 +256,7 @@ def login():
                 '''
     
     
-@guest.route('/logout/')
+@guest.route('/logout')
 def logout():
     if 'username' in session:
         session.pop('username', None)
@@ -264,7 +264,7 @@ def logout():
         session.pop('school', None)
     return redirect(url_for('guest.login'))
     
-@guest.route('/viewGrouping/')
+@guest.route('/viewGrouping')
 def viewGrouping():
     groupLists = []
     # Querying Male Grouping
@@ -293,7 +293,7 @@ def viewGrouping():
     if found, then it's a unified team. front-end find all unified team names, asking admin to enter how each unified team is formed, i.e. which two schools form the unified team.
     if no unified teams found or every unified team is well-defined, then the data is posted.
 '''
-@admin.route('/setGrouping/', methods = ['GET', 'POST'])
+@admin.route('/setGrouping', methods = ['GET', 'POST'])
 def setGrouping():
     curIden = testIdentity()
     if curIden == 0:
@@ -373,7 +373,7 @@ def setGrouping():
     then get the matches in the latest 2 match days before the given date.
 
 '''
-@guest.route('/viewMatches/', methods = ['GET', 'POST'])
+@guest.route('/viewMatches', methods = ['GET', 'POST'])
 def viewMatches():
     if request.method == 'POST':
         # '''
@@ -471,7 +471,7 @@ def viewMatches():
             '''
     
 
-@guest.route('/matchInfo/<id>/')
+@guest.route('/matchInfo/<id>')
 def matchInfo(id):
     print('matchInfo:', id)
     print(db.session.commit)
@@ -528,7 +528,7 @@ def matchInfo(id):
         return json.dumps(match_dict)
 
 
-@umpire.route('/confirmPoints/', methods = ['GET', 'POST'])
+@umpire.route('/confirmPoints', methods = ['GET', 'POST'])
 def confirmPoints():
     returnDict = {
         'success': False,
@@ -610,7 +610,7 @@ Better solution may be given later
 identity: 1 for umpire, 2 for vice umpire
 type: 0 for entering, -1 for quiting
 '''
-@umpire.route('/umpireRequest/', methods = ['GET', 'POST'])
+@umpire.route('/umpireRequest', methods = ['GET', 'POST'])
 def umpireRequest():
     returnDict = {
         'success': False,
@@ -710,7 +710,7 @@ def umpireRequest():
             '''
 
 
-@umpire.route('/matchesToParticipateIn/')
+@umpire.route('/matchesToParticipateIn')
 def myMatches():
     returnDict = {
         'success': False,

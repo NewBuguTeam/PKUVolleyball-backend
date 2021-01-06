@@ -1,5 +1,21 @@
 ## PKUVolleyball-backend
 
+### Requirements
+
+Use the following command to install all the required packages:
+
+```
+pip install -r requirements.txt
+
+```
+
+if error like `OSError: mysql-config not found` occured, the following command might help:
+
+```
+sudo apt install default-libmysqlclient-dev
+
+```
+
 ### Database configuration
 
 Here shows the commands that should be run in in the MySQL commandline, which configs username & pw, and the database name used in the back-end, and also showed in /instance/config.py .
